@@ -54,7 +54,7 @@ function Main() {
   var tpWorkouts = TpParseWorkouts(workoutJSON.getContentText())
   
   tpWorkouts.forEach(function(w){
-    WhoopPostWorkout(w);
+    WhoopPostWorkout(w, false);
   });
 
 }
@@ -172,11 +172,40 @@ function TpParseWorkouts(data) {
       case '3': //Run
         workoutType = 0; //Running
         break;
+      case '4': //Brick
+        workoutType = 49; //Duathlon
+        break;
+      case '5': //Crosstrain
+        workoutType = 103; //Crossfit
+        break;
+      case '8': //Mountainbiking
+        workoutType = 57; //Mountainbiking
+        break;
       case '9': //Strength
         workoutType = 45; //Weightlifting
         break;
-      default:
+      case '10': //Custom
+        workoutType =  getWhoopWorkoutTypeByTitle(workout.title.toString());
+        if (workoutType == null){
+          Logger.log(`Skipping unknown workout type ${workout.workoutId}.`);
+          continue;
+        }
+        break;
+      case '11': //XC-Ski
+        workoutType = 47; //Crosscountry skiiing
+        break;
+      case '12': //Rowing
+        workoutType = 0; //Crew
+        break;
+      case '13': //Walk
+        workoutType = 63; //Walking
+        break;
+      case '100': //Other
         workoutType = 71; //Other
+        break;
+      default:
+        Logger.log(`Skipping unknown workout type ${workout.workoutId}.`);
+        continue;
     }
     
     var startDate = new Date(workout.startTime);
@@ -201,6 +230,38 @@ function TpParseWorkouts(data) {
   return result;
 }
 
+function getWhoopWorkoutTypeByTitle(title){
+  var sportsJSON = WhoopGetSports();
+  if (sportsJSON != null){
+    for (var sport of sportsJSON){
+      if (title.contains(sport.name)){
+        return sport.id;
+      }
+    }
+  }
+  return;
+}
+
+function WhoopGetSports(){
+  
+  var url = `https://api-7.whoop.com/activities-service/v1/sports`;
+  
+  var options =
+      {
+        "method" : "GET",
+        "muteHttpExceptions" : true,
+        "headers": {"Authorization": `Bearer ${loadSetting("Whoop_access_token")}`, "Accept-Language": "en"}
+      };
+    
+  var result = UrlFetchApp.fetch(url, options);
+
+  if (result.getResponseCode() != 200){//Not Authorized
+    Logger.log("Unable to get Whoop sports list.");
+    return;
+  }
+
+  return JSON.parse(result.getContentText());
+}
 
 function TpDoRegister() {
   
@@ -343,3 +404,4 @@ function deleteSetting(key){
 }
 
 Date.prototype.addHours=function(h){return new Date(this.valueOf() + 1000*60*60*h);};
+String.prototype.contains=function(c){return (this.indexOf(c) > -1);};
